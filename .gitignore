@@ -1,32 +1,30 @@
-# Prerequisites
-*.d
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+**/.DS_Store
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# It's nice to have the Builds folder exist, to remind us where it is
+Builds/*
+!Builds/.gitkeep
 
-# Precompiled Headers
-*.gch
-*.pch
+# This should never exist
+Install/*
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+# Running CTest makes a bunch o junk
+Testing
 
-# Fortran module files
-*.mod
-*.smod
+# IDE config
+.idea
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+# clion cmake builds
+cmake-build-debug
+cmake-build-release
+cmake-build-relwithdebinfo
+packaging/Output/*
