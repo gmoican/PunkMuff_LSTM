@@ -61,7 +61,6 @@ public:
     
     // Updaters
     void updateOnOff();
-    void updateMode();
     void updateSustain();
     void updateTone();
     void updateLevel();
@@ -75,8 +74,10 @@ private:
     using WaveShaper = juce::dsp::WaveShaper<float>;
     using Gain = juce::dsp::Gain<float>;
     
-    juce::dsp::ProcessorChain<FilterBand, FilterBand, FilterBand, FilterBand> preEq;
-    juce::dsp::ProcessorChain<FilterBand, FilterBand, FilterBand, FilterBand, FilterBand> toneEq;
+    Gain sustainLevel, sustainCompLevel, outputLevel;
+    
+    juce::dsp::ProcessorChain<FilterBand, FilterBand> preEq;
+    juce::dsp::ProcessorChain<FilterBand, FilterBand, FilterBand, FilterBand> toneEq;
     WaveShaper clipper;
     
     bool on;

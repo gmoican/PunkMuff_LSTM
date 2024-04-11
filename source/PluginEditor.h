@@ -19,7 +19,7 @@ public:
     void resized() override;
     
     //=================== PARAMETER MANIPULATION ===================================
-    void setSliderComponent(juce::Slider& slider, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>& sliderAttachment, juce::String paramName);
+    void setSliderComponent(juce::Slider& slider, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>& sliderAttachment, juce::String paramName, bool linStyle);
     void setToggleComponent(juce::ToggleButton& button, std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>& buttonAttachment, juce::String paramName);
     juce::AffineTransform knobRotation(float radians, float posX, float posY, float scaleFactor);
     

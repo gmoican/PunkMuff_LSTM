@@ -8,11 +8,11 @@ PunkMuffEditor::PunkMuffEditor (PunkMuffProcessor& p)
     juce::ignoreUnused(audioProcessor);
     
     // ================= PARAMETERS ====================
-    setSliderComponent(sustainKnob, sustainKnobAttachment, "SUSTAIN");
-    setSliderComponent(toneKnob, toneKnobAttachment, "TONE");
-    setSliderComponent(levelKnob, levelKnobAttachment, "LEVEL");
+    setSliderComponent(sustainKnob, sustainKnobAttachment, "SUSTAIN", false);
+    setSliderComponent(toneKnob, toneKnobAttachment, "TONE", false);
+    setSliderComponent(levelKnob, levelKnobAttachment, "LEVEL", false);
     
-    setSliderComponent(modeSwitch, modeSwitchAttachment, "MODE");
+    setSliderComponent(modeSwitch, modeSwitchAttachment, "MODE", true);
     
     setToggleComponent(onToggle, onToggleAttachment, "ONOFF");
 
@@ -46,8 +46,8 @@ void PunkMuffEditor::paint (juce::Graphics& g)
     
     // ========== Parameter knobs angle in radians ==================
     auto sustainRadians = juce::jmap(sustainKnob.getValue(), 0.0, 10.0, -150.0, 150.0) * DEG2RADS;
-    auto toneRadians = juce::jmap(toneKnob.getValue(), -18.0, 18.0, -150.0, 150.0) * DEG2RADS;
-    auto levelRadians = juce::jmap(levelKnob.getValue(), -10.0, 10.0, -150.0, 150.0) * DEG2RADS;
+    auto toneRadians = juce::jmap(toneKnob.getValue(), 0.0, 10.0, -150.0, 150.0) * DEG2RADS;
+    auto levelRadians = juce::jmap(levelKnob.getValue(), -18.0, 18.0, -150.0, 150.0) * DEG2RADS;
     
     // ========== Draw parameter knobs ==================
     g.drawImageTransformed(knobImage, knobRotation(sustainRadians, 12.5, 38.0, 0.48));
@@ -85,9 +85,12 @@ void PunkMuffEditor::resized()
     onToggle.setBounds(65, 240, 50, 50);
 }
 
-void PunkMuffEditor::setSliderComponent(juce::Slider &slider, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> &sliderAttachment, juce::String paramName){
+void PunkMuffEditor::setSliderComponent(juce::Slider &slider, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> &sliderAttachment, juce::String paramName, bool linStyle){
     sliderAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.state, paramName, slider);
-    slider.setSliderStyle(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag);
+    if (linStyle)
+        slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    else
+        slider.setSliderStyle(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag);
     slider.setTextBoxStyle(juce::Slider::TextEntryBoxPosition::NoTextBox, true, 0, 0);
     addAndMakeVisible(slider);
     slider.setAlpha(0);

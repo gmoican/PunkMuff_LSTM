@@ -91,12 +91,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PunkMuffProcessor::createPar
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
         
     params.push_back(std::make_unique<juce::AudioParameterBool>("ONOFF", "On/Off", true));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("BOOST", "Boost level", juce::NormalisableRange<float>(-18.0f, 18.0f, 0.1f), DEFAULT_BOOST, "dB"));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("CHARACTER", "Character", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), DEFAULT_CHAR, ""));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("MID_G", "Mids gain", juce::NormalisableRange<float>(-10.0f, 10.0f, 0.1f), DEFAULT_MID_G, "dB"));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("MID_F", "Mids frequency", juce::NormalisableRange<float>(250.0f, 2500.0f, 0.1f), DEFAULT_MID_FREQ, "Hz"));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("BASS", "Bass gain", juce::NormalisableRange<float>(-10.0f, 10.0f, 0.1f), DEFAULT_BASS, "dB"));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("TREBLE", "Treble gain", juce::NormalisableRange<float>(-10.0f, 10.0f, 0.1f), DEFAULT_TREB, "dB"));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("SUSTAIN", "Sustain", juce::NormalisableRange<float>(0.0f, 10.0f, 0.01f), DEFAULT_SUSTAIN, ""));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("TONE", "Tone", juce::NormalisableRange<float>(0.0f, 10.0f, 0.01f), DEFAULT_TONE, ""));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("LEVEL", "Output level", juce::NormalisableRange<float>(-18.0f, 18.0f, 0.01f), DEFAULT_LEVEL, "dB"));
+    params.push_back(std::make_unique<juce::AudioParameterInt>("MODE", "Mode", 0, 2, DEFAULT_MODE));
         
     return { params.begin(), params.end() };
 }
@@ -110,51 +108,79 @@ void PunkMuffProcessor::updateOnOff()
 
 void PunkMuffProcessor::updateSustain()
 {
-    auto OUT = state.getRawParameterValue("BOOST");
-    boosterLevel.setGainDecibels(OUT->load());
+    auto SUS = state.getRawParameterValue("SUSTAIN")->load();
+    
+    float susLvl = juce::jmap(SUS, 0.f, 10.f, 15.f, 45.f);
+    float susCompLvl = juce::jmap(SUS, 0.f, 10.f, -10.f, -30.f);
+    
+    sustainLevel.setGainDecibels(susLvl);
+    sustainCompLevel.setGainDecibels(susCompLvl);
 }
 
 void PunkMuffProcessor::updateTone()
 {
-    auto CHAR = state.getRawParameterValue("CHARACTER");
+    auto TONE = state.getRawParameterValue("TONE")->load();
+    auto MODE = (int) state.getRawParameterValue("MODE")->load();
     
-    auto charLowGain = juce::jmap(CHAR->load(), 0.f, 10.f, 1.f, 2.2f);
-    auto charMidGain = juce::jmap(CHAR->load(), 0.f, 10.f, 1.f, 0.1f);
-    auto charMidHiGain = juce::jmap(CHAR->load(), 0.f, 10.f, 1.f, 1.8f);
-    auto charHiGain = juce::jmap(CHAR->load(), 0.f, 10.f, 1.f, 2.4f);
+    float lowPassFrec, lowShelfDip, highShelfBoost, highShelfFrec, midDipFrec, midDipQ, midDipGain;
+    switch (MODE) {
+        // Big Muff Pi
+        case 0:
+            lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
+            lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
+            highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
+            highShelfFrec = 2400.f;
+            midDipFrec = 1000.f;
+            midDipQ = juce::jmap(abs(TONE - 5.f), 0.f, 5.f, 1.2f, 0.9f);
+            midDipGain = juce::jmap(abs(TONE - 5.f), 0.f, 5.f, 0.5f, 0.9f);
+            break;
+        // Elk Sustainer
+        case 1:
+            lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
+            lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
+            highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
+            highShelfFrec = 3000.f;
+            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 6000.f, 1200.f);
+            midDipQ = juce::jmap(TONE, 0.f, 10.f, 1.f, 3.f);
+            midDipGain = juce::jmap(TONE, 0.f, 10.f, 0.6f, 0.3f);
+            break;
+        // Another pedal ???
+        case 2:
+            lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
+            lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
+            highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
+            highShelfFrec = 3000.f;
+            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 6000.f, 1200.f);
+            midDipQ = juce::jmap(TONE, 0.f, 10.f, 1.f, 3.f);
+            midDipGain = juce::jmap(TONE, 0.f, 10.f, 0.6f, 0.3f);
+            break;
+            
+        default:
+            break;
+    }
+    
     
     double sampleRate = getSampleRate();
     
-    *toneEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(sampleRate, 130.f, 1.f, charLowGain);
-    *toneEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, 500.f, 1.f, charMidGain);
-    *toneEq.get<2>().state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, 680.f, 1.f, charMidHiGain);
-    *toneEq.get<3>().state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, 3100.f, 1.f, charHiGain);
+    *toneEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, lowPassFrec);
+    *toneEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(sampleRate, 630.f, 1.f, lowShelfDip);
+    *toneEq.get<2>().state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, highShelfFrec, 1.4f, highShelfBoost);
+    *toneEq.get<3>().state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, midDipFrec, midDipQ, midDipGain);
 }
 
-void PunkMuffProcessor::updateMode()
+void PunkMuffProcessor::updateLevel()
 {
-    auto MIDG = state.getRawParameterValue("MID_G");
-    auto MIDF = state.getRawParameterValue("MID_F");
-    auto BASS = state.getRawParameterValue("BASS");
-    auto TREBLE = state.getRawParameterValue("TREBLE");
-    
-    auto bassGain = juce::Decibels::decibelsToGain(BASS->load());
-    auto trebleGain = juce::Decibels::decibelsToGain(TREBLE->load());
-    auto midGain = juce::Decibels::decibelsToGain(MIDG->load());
-    
-    double sampleRate = getSampleRate();
-    
-    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, 80.f, 0.8f, bassGain);
-    *preEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, MIDF->load(), 1.f, midGain);
-    *preEq.get<2>().state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, 5000.f, 0.6f, trebleGain);
+    auto LVL = state.getRawParameterValue("LEVEL")->load();
+        
+    outputLevel.setGainDecibels(LVL);
 }
 
 void PunkMuffProcessor::updateState()
 {
     updateOnOff();
-    updateTone();
-    updateMode();
     updateSustain();
+    updateTone();
+    updateLevel();
 }
 
 //==============================================================================
@@ -165,20 +191,25 @@ void PunkMuffProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = getTotalNumOutputChannels();
     spec.sampleRate = sampleRate;
     
+    sustainLevel.prepare(spec);
+    sustainLevel.setRampDurationSeconds(0.1f);
+    sustainCompLevel.prepare(spec);
+    sustainCompLevel.setRampDurationSeconds(0.1f);
+    
     preEq.prepare(spec);
     preEq.reset();
-    *preEq.get<3>().state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 30.f);
+    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 1200.f);
+    *preEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 30.f);
     
-    toneEq.prepare(spec);
-    toneEq.reset();
-    *toneEq.get<4>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 12000.f);
-    
-    boosterLevel.prepare(spec);
-    boosterLevel.setRampDurationSeconds(0.1f);
-        
     clipper.prepare(spec);
     clipper.reset();
     clipper.functionToUse = doubleClipper;
+
+    toneEq.prepare(spec);
+    toneEq.reset();
+    
+    outputLevel.prepare(spec);
+    outputLevel.setRampDurationSeconds(0.1f);
 }
 
 void PunkMuffProcessor::releaseResources()
@@ -237,15 +268,15 @@ void PunkMuffProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         
         preEq.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
         
-        boosterLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
+        sustainLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
+        sustainCompLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
         
-        dryWetMixer.pushDrySamples(audioBlock);
-        
-        booster.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
-        
-        dryWetMixer.mixWetSamples(audioBlock);
-        
+        // TODO: Add oversampling ??
+        clipper.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
+                
         toneEq.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
+        
+        outputLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
     }
 }
 
