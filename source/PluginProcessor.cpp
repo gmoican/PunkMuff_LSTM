@@ -124,29 +124,28 @@ void PunkMuffProcessor::updateTone()
     
     float lowPassFrec, lowShelfDip, highShelfBoost, highShelfFrec, midDipFrec, midDipQ, midDipGain;
     switch (MODE) {
-        // Big Muff Pi
-        case 0:
-            lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
-            lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
-            highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
-            highShelfFrec = 2400.f;
-            midDipFrec = 1000.f;
-            midDipQ = juce::jmap(abs(TONE - 5.f), 0.f, 5.f, 1.2f, 0.9f);
-            midDipGain = juce::jmap(abs(TONE - 5.f), 0.f, 5.f, 0.5f, 0.9f);
-            break;
         // Elk Sustainer
         case 1:
-            lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
-            lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
-            highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
-            highShelfFrec = 3000.f;
-            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 6000.f, 1200.f);
-            midDipQ = juce::jmap(TONE, 0.f, 10.f, 1.f, 3.f);
-            midDipGain = juce::jmap(TONE, 0.f, 10.f, 0.6f, 0.3f);
+            if (TONE > 5.f) {
+                lowPassFrec = 20000.f;
+                highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
+                lowShelfDip = juce::jmap(TONE, 5.f, 10.f, 1.f, 0.4f);
+            } else {
+                lowPassFrec = juce::jmap(TONE, 0.f, 5.f, 600.f, 20000.f);
+                highShelfBoost = 1.f;
+                lowShelfDip = 1.f;
+            }
+            highShelfFrec = 2400.f;
+            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 4000.f, 1200.f);
+            midDipQ = 2.f;
+            midDipGain = 0.3f;
             break;
-        // Another pedal ???
+        // TODO: Another pedal ???
         case 2:
-            lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
+            if (TONE > 5.f)
+                lowPassFrec = 22000.f;
+            else
+                lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
             lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
             highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
             highShelfFrec = 3000.f;
@@ -154,17 +153,29 @@ void PunkMuffProcessor::updateTone()
             midDipQ = juce::jmap(TONE, 0.f, 10.f, 1.f, 3.f);
             midDipGain = juce::jmap(TONE, 0.f, 10.f, 0.6f, 0.3f);
             break;
-            
+        // Big Muff Pi
         default:
+            if (TONE > 5.f) {
+                lowPassFrec = 20000.f;
+                highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
+                lowShelfDip = juce::jmap(TONE, 5.f, 10.f, 1.f, 0.4f);
+            } else {
+                lowPassFrec = juce::jmap(TONE, 0.f, 5.f, 600.f, 20000.f);
+                highShelfBoost = 1.f;
+                lowShelfDip = 1.f;
+            }
+            highShelfFrec = 2000.f;
+            midDipFrec = 1000.f;
+            midDipQ = 1.2f;
+            midDipGain = juce::jmap(abs(TONE - 5.f), 0.f, 5.f, 0.4f, 1.f);
             break;
     }
-    
     
     double sampleRate = getSampleRate();
     
     *toneEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, lowPassFrec);
-    *toneEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(sampleRate, 630.f, 1.f, lowShelfDip);
-    *toneEq.get<2>().state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, highShelfFrec, 1.4f, highShelfBoost);
+    *toneEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(sampleRate, 630.f, 0.7f, lowShelfDip);
+    *toneEq.get<2>().state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, highShelfFrec, 0.7f, highShelfBoost);
     *toneEq.get<3>().state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, midDipFrec, midDipQ, midDipGain);
 }
 
@@ -198,7 +209,7 @@ void PunkMuffProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     
     preEq.prepare(spec);
     preEq.reset();
-    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 1200.f);
+    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 8000.f);
     *preEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 30.f);
     
     clipper.prepare(spec);

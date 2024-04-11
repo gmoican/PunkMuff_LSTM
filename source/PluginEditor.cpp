@@ -57,13 +57,13 @@ void PunkMuffEditor::paint (juce::Graphics& g)
     // ========= Mode switch position  ==================
     switch ((int) modeSwitch.getValue()) {
         case 0:
-            g.drawImageTransformed(switchTopImage, knobRotation(0, 74.0, 31.0, 0.5));
+            g.drawImageTransformed(switchTopImage, knobRotation(0, 74.0, 29.0, 0.5));
             break;
         case 1:
-            g.drawImageTransformed(switchTopImage, knobRotation(0, 83.0, 31.0, 0.5));
+            g.drawImageTransformed(switchTopImage, knobRotation(0, 81.0, 29.0, 0.5));
             break;
         case 2:
-            g.drawImageTransformed(switchTopImage, knobRotation(0, 92.0, 31.0, 0.5));
+            g.drawImageTransformed(switchTopImage, knobRotation(0, 89.0, 29.0, 0.5));
             break;
             
         default:
