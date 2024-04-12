@@ -110,8 +110,8 @@ void PunkMuffProcessor::updateSustain()
 {
     auto SUS = state.getRawParameterValue("SUSTAIN")->load();
     
-    float susLvl = juce::jmap(SUS, 0.f, 10.f, 15.f, 45.f);
-    float susCompLvl = juce::jmap(SUS, 0.f, 10.f, -10.f, -30.f);
+    float susLvl = juce::jmap(SUS, 0.f, 10.f, 15.f, 60.f);
+    float susCompLvl = juce::jmap(SUS, 0.f, 10.f, -10.f, -20.f);
     
     sustainLevel.setGainDecibels(susLvl);
     sustainCompLevel.setGainDecibels(susCompLvl);
@@ -126,6 +126,7 @@ void PunkMuffProcessor::updateTone()
     switch (MODE) {
         // Elk Sustainer
         case 1:
+            clipper.get<0>().setBias(0.f);
             if (TONE > 5.f) {
                 lowPassFrec = 20000.f;
                 highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
@@ -136,25 +137,30 @@ void PunkMuffProcessor::updateTone()
                 lowShelfDip = 1.f;
             }
             highShelfFrec = 2400.f;
-            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 4000.f, 1200.f);
+            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 3600.f, 1200.f);
             midDipQ = 2.f;
             midDipGain = 0.3f;
             break;
-        // TODO: Another pedal ???
+        // Experiment pedal
         case 2:
-            if (TONE > 5.f)
-                lowPassFrec = 22000.f;
-            else
-                lowPassFrec = juce::jmap(TONE, 0.f, 10.f, 800.f, 16000.f);
-            lowShelfDip = juce::jmap(TONE, 0.f, 10.f, 1.f, 0.4f);
-            highShelfBoost = juce::jmap(TONE, 0.f, 10.f, 0.7f, 1.5f);
-            highShelfFrec = 3000.f;
-            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 6000.f, 1200.f);
-            midDipQ = juce::jmap(TONE, 0.f, 10.f, 1.f, 3.f);
-            midDipGain = juce::jmap(TONE, 0.f, 10.f, 0.6f, 0.3f);
+            clipper.get<0>().setBias( juce::jmap(TONE, 0.f, 10.f, 0.5f, -0.2f));
+            if (TONE > 5.f) {
+                lowPassFrec = 20000.f;
+                highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
+                lowShelfDip = juce::jmap(TONE, 5.f, 10.f, 1.f, 0.4f);
+            } else {
+                lowPassFrec = juce::jmap(TONE, 0.f, 5.f, 600.f, 20000.f);
+                highShelfBoost = 1.f;
+                lowShelfDip = 1.f;
+            }
+            highShelfFrec = 2400.f;
+            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 2000.f, 780.f);
+            midDipQ = 1.6f;
+            midDipGain = 0.4f;
             break;
         // Big Muff Pi
         default:
+            clipper.get<0>().setBias(0.f);
             if (TONE > 5.f) {
                 lowPassFrec = 20000.f;
                 highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
@@ -203,24 +209,25 @@ void PunkMuffProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.sampleRate = sampleRate;
     
     sustainLevel.prepare(spec);
-    sustainLevel.setRampDurationSeconds(0.1f);
+    sustainLevel.setRampDurationSeconds(0.1);
     sustainCompLevel.prepare(spec);
-    sustainCompLevel.setRampDurationSeconds(0.1f);
+    sustainCompLevel.setRampDurationSeconds(0.1);
     
     preEq.prepare(spec);
     preEq.reset();
-    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 8000.f);
+    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 12000.f);
     *preEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 30.f);
     
     clipper.prepare(spec);
     clipper.reset();
-    clipper.functionToUse = doubleClipper;
+    clipper.get<0>().setRampDurationSeconds(0.1);
+    clipper.get<1>().functionToUse = doubleClipper;
 
     toneEq.prepare(spec);
     toneEq.reset();
     
     outputLevel.prepare(spec);
-    outputLevel.setRampDurationSeconds(0.1f);
+    outputLevel.setRampDurationSeconds(0.1);
 }
 
 void PunkMuffProcessor::releaseResources()
@@ -280,10 +287,11 @@ void PunkMuffProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         preEq.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
         
         sustainLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
-        sustainCompLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
         
         // TODO: Add oversampling ??
         clipper.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
+        
+        sustainCompLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
                 
         toneEq.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
         

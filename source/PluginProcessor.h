@@ -72,13 +72,14 @@ private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParams();
     using FilterBand = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
     using WaveShaper = juce::dsp::WaveShaper<float>;
+    using Bias = juce::dsp::Bias<float>;
     using Gain = juce::dsp::Gain<float>;
     
     Gain sustainLevel, sustainCompLevel, outputLevel;
     
     juce::dsp::ProcessorChain<FilterBand, FilterBand> preEq;
     juce::dsp::ProcessorChain<FilterBand, FilterBand, FilterBand, FilterBand> toneEq;
-    WaveShaper clipper;
+    juce::dsp::ProcessorChain<Bias, WaveShaper> clipper;
     
     bool on;
     
