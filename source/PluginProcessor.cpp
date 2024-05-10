@@ -90,11 +90,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PunkMuffProcessor::createPar
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
         
-    params.push_back(std::make_unique<juce::AudioParameterBool>("ONOFF", "On/Off", true));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("SUSTAIN", "Sustain", juce::NormalisableRange<float>(0.0f, 10.0f, 0.01f), DEFAULT_SUSTAIN, ""));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("TONE", "Tone", juce::NormalisableRange<float>(0.0f, 10.0f, 0.01f), DEFAULT_TONE, ""));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("LEVEL", "Output level", juce::NormalisableRange<float>(-18.0f, 18.0f, 0.01f), DEFAULT_LEVEL, "dB"));
-    params.push_back(std::make_unique<juce::AudioParameterInt>("MODE", "Mode", 0, 2, DEFAULT_MODE));
+    params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("ONOFF", 0), "On/Off", true));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("SUSTAIN", 0), "Sustain", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), DEFAULT_SUSTAIN, ""));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("TONE", 0), "Tone", juce::NormalisableRange<float>(0.0f, 10.0f, 0.01f), DEFAULT_TONE, ""));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("LEVEL", 0), "Output level", juce::NormalisableRange<float>(-18.0f, 18.0f, 0.01f), DEFAULT_LEVEL, "dB"));
+    params.push_back(std::make_unique<juce::AudioParameterInt>(juce::ParameterID("MODE", 0), "Mode", 0, 2, DEFAULT_MODE));
         
     return { params.begin(), params.end() };
 }
@@ -108,13 +108,7 @@ void PunkMuffProcessor::updateOnOff()
 
 void PunkMuffProcessor::updateSustain()
 {
-    auto SUS = state.getRawParameterValue("SUSTAIN")->load();
-    
-    float susLvl = juce::jmap(SUS, 0.f, 10.f, 15.f, 60.f);
-    float susCompLvl = juce::jmap(SUS, 0.f, 10.f, -10.f, -20.f);
-    
-    sustainLevel.setGainDecibels(susLvl);
-    sustainCompLevel.setGainDecibels(susCompLvl);
+    sustainLevel = state.getRawParameterValue("SUSTAIN")->load();
 }
 
 void PunkMuffProcessor::updateTone()
@@ -126,7 +120,6 @@ void PunkMuffProcessor::updateTone()
     switch (MODE) {
         // Elk Sustainer
         case 1:
-            clipper.get<0>().setBias(0.f);
             if (TONE > 5.f) {
                 lowPassFrec = 20000.f;
                 highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
@@ -138,29 +131,27 @@ void PunkMuffProcessor::updateTone()
             }
             highShelfFrec = 2400.f;
             midDipFrec = juce::jmap(TONE, 0.f, 10.f, 3600.f, 1200.f);
-            midDipQ = 2.f;
+            midDipQ = 1.7f;
             midDipGain = 0.3f;
             break;
         // Experiment pedal
         case 2:
-            clipper.get<0>().setBias( juce::jmap(TONE, 0.f, 10.f, 0.5f, -0.2f));
             if (TONE > 5.f) {
                 lowPassFrec = 20000.f;
-                highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
-                lowShelfDip = juce::jmap(TONE, 5.f, 10.f, 1.f, 0.4f);
+                highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 0.8f, 3.f);
+                lowShelfDip = juce::jmap(TONE, 5.f, 10.f, 1.2f, 0.4f);
             } else {
-                lowPassFrec = juce::jmap(TONE, 0.f, 5.f, 600.f, 20000.f);
-                highShelfBoost = 1.f;
-                lowShelfDip = 1.f;
+                lowPassFrec = juce::jmap(TONE, 0.f, 5.f, 1000.f, 20000.f);
+                highShelfBoost = 0.8f;
+                lowShelfDip = 1.2f;
             }
             highShelfFrec = 2400.f;
-            midDipFrec = juce::jmap(TONE, 0.f, 10.f, 2000.f, 780.f);
+            midDipFrec = 780.f;
             midDipQ = 1.6f;
             midDipGain = 0.4f;
             break;
         // Big Muff Pi
         default:
-            clipper.get<0>().setBias(0.f);
             if (TONE > 5.f) {
                 lowPassFrec = 20000.f;
                 highShelfBoost = juce::jmap(TONE, 5.f, 10.f, 1.f, 1.5f);
@@ -173,7 +164,7 @@ void PunkMuffProcessor::updateTone()
             highShelfFrec = 2000.f;
             midDipFrec = 1000.f;
             midDipQ = 1.2f;
-            midDipGain = juce::jmap(abs(TONE - 5.f), 0.f, 5.f, 0.4f, 1.f);
+            midDipGain = 1.f;
             break;
     }
     
@@ -208,20 +199,14 @@ void PunkMuffProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = getTotalNumOutputChannels();
     spec.sampleRate = sampleRate;
     
-    sustainLevel.prepare(spec);
-    sustainLevel.setRampDurationSeconds(0.1);
-    sustainCompLevel.prepare(spec);
-    sustainCompLevel.setRampDurationSeconds(0.1);
+    // Read json model
+    juce::MemoryInputStream jsonInputStream(BinaryData::pimuff_model_json, BinaryData::pimuff_model_jsonSize, false);
+    nlohmann::json weights_json = nlohmann::json::parse(jsonInputStream.readEntireStreamAsString().toStdString());
+    LSTM1.reset();
+    LSTM1.load_json(weights_json);
     
-    preEq.prepare(spec);
-    preEq.reset();
-    *preEq.get<0>().state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 12000.f);
-    *preEq.get<1>().state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 30.f);
-    
-    clipper.prepare(spec);
-    clipper.reset();
-    clipper.get<0>().setRampDurationSeconds(0.1);
-    clipper.get<1>().functionToUse = doubleClipper;
+    LSTM2.reset();
+    LSTM2.load_json(weights_json);
 
     toneEq.prepare(spec);
     toneEq.reset();
@@ -267,31 +252,19 @@ void PunkMuffProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ignoreUnused(midiMessages);
     
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
     
     updateState();
     if(on)
     {
-        juce::dsp::AudioBlock<float> audioBlock = juce::dsp::AudioBlock<float>(buffer);
+        juce::dsp::AudioBlock<float> audioBlock(buffer);
         
-        preEq.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
-        
-        sustainLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
-        
-        // TODO: Add oversampling ??
-        clipper.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
-        
-        sustainCompLevel.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
+        // Model inference
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch) {
+            if (ch == 0)
+                LSTM1.process(buffer.getReadPointer(ch), buffer.getWritePointer(ch), sustainLevel, buffer.getNumSamples());
+            else
+                LSTM2.process(buffer.getReadPointer(ch), buffer.getWritePointer(ch), sustainLevel, buffer.getNumSamples());
+        }
                 
         toneEq.process(juce::dsp::ProcessContextReplacing<float>(audioBlock));
         

@@ -45,7 +45,7 @@ void PunkMuffEditor::paint (juce::Graphics& g)
     }
     
     // ========== Parameter knobs angle in radians ==================
-    auto sustainRadians = juce::jmap(sustainKnob.getValue(), 0.0, 10.0, -150.0, 150.0) * DEG2RADS;
+    auto sustainRadians = juce::jmap(sustainKnob.getValue(), 0.0, 1.0, -150.0, 150.0) * DEG2RADS;
     auto toneRadians = juce::jmap(toneKnob.getValue(), 0.0, 10.0, -150.0, 150.0) * DEG2RADS;
     auto levelRadians = juce::jmap(levelKnob.getValue(), -18.0, 18.0, -150.0, 150.0) * DEG2RADS;
     

@@ -2,3 +2,6 @@
 	path = JUCE
 	url = https://github.com/juce-framework/JUCE/
 	branch = develop
+[submodule "modules/RTNeural"]
+	path = modules/RTNeural
+	url = https://github.com/jatinchowdhury18/RTNeural

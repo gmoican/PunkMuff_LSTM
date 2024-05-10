@@ -2,13 +2,14 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+#include "RTNeuralLSTM.h"
 
 #if (MSVC)
 #include "ipps.h"
 #endif
 
 #define DEFAULT_MODE 0
-#define DEFAULT_SUSTAIN 5.0f
+#define DEFAULT_SUSTAIN 0.5f
 #define DEFAULT_TONE 5.0f
 #define DEFAULT_LEVEL 0.0f
 
@@ -59,45 +60,26 @@ public:
     //=============== MY STUFF =====================================================
     juce::AudioProcessorValueTreeState state;
     
+private:
+    juce::AudioProcessorValueTreeState::ParameterLayout createParams();
+    using FilterBand = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    using Gain = juce::dsp::Gain<float>;
+    
+    // ML model
+    RT_LSTM LSTM1;
+    RT_LSTM LSTM2;
+
+    float sustainLevel = DEFAULT_SUSTAIN;
+    juce::dsp::ProcessorChain<FilterBand, FilterBand, FilterBand, FilterBand> toneEq;
+    Gain outputLevel;
+    bool on;
+    
     // Updaters
     void updateOnOff();
     void updateSustain();
     void updateTone();
     void updateLevel();
     void updateState();
-    
-    void process(float* samples, int numSamples);
-
-private:
-    juce::AudioProcessorValueTreeState::ParameterLayout createParams();
-    using FilterBand = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
-    using WaveShaper = juce::dsp::WaveShaper<float>;
-    using Bias = juce::dsp::Bias<float>;
-    using Gain = juce::dsp::Gain<float>;
-    
-    Gain sustainLevel, sustainCompLevel, outputLevel;
-    
-    juce::dsp::ProcessorChain<FilterBand, FilterBand> preEq;
-    juce::dsp::ProcessorChain<FilterBand, FilterBand, FilterBand, FilterBand> toneEq;
-    juce::dsp::ProcessorChain<Bias, WaveShaper> clipper;
-    
-    bool on;
-    
-    // Drive functions
-    static float doubleClipper(float sample)
-    {
-        return softClipper( softClipper(sample) );
-    }
-    
-    static float softClipper(float sample)
-    {
-        return sample / (abs(sample) + 1.f);
-    }
-    
-    static float tanhClipper(float sample)
-    {
-        return 2.f / juce::MathConstants<float>::pi * juce::dsp::FastMathApproximations::tanh(sample);
-    }
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PunkMuffProcessor)

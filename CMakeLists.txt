@@ -82,7 +82,7 @@ endif ()
 add_subdirectory(JUCE)
 
 # Add any other modules you want modules here, before the juce_add_plugin call
-# juce_add_module(modules/my_module)
+add_subdirectory(modules/RTNeural)
 
 # See `docs/CMake API.md` in the JUCE repo for all config options
 juce_add_plugin("${PROJECT_NAME}"
@@ -198,6 +198,7 @@ target_compile_definitions(SharedCode
 target_link_libraries(SharedCode
     INTERFACE
     Assets
+    RTNeural
     juce_audio_utils
     juce_audio_processors
     juce_dsp
