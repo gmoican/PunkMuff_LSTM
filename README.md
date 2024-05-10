@@ -10,7 +10,7 @@ Special thanks to [Keith Bloemer](https://github.com/GuitarML) for his work and 
 
 ## Features
 - **Sustain**: Sets the gain before the clipping processing.
-- **Tone & Mode**: Adjust the frequency response after the clipping. The `mode` emulates the EQ curves of the following pedals:
+- **Tone & Mode**: Adjust the frequency response after the clipping. The `MODE` emulates the EQ curves of the following pedals:
     - Mode 1: Big Muff Pi.
     - Mode 2: Elk Sustainer.
     - Mode 3: Custom modification.
